@@ -11,7 +11,7 @@ client.on('ready', function() {
 
 client.on('message', function(message) {
 
-  if (message.author.id === client.user.id)
+  if (message.author.id === client.user.id || !message.content.startsWith('!votekick'))
     return;
 
   if (hasRole(message.member, 'Degenerate')) {
@@ -21,13 +21,35 @@ client.on('message', function(message) {
   }
 
   const mention = message.mentions.members.first();
-  message.channel.send(`<@${message.author.id}> initiated a vote to kick <@${mention.user.id}>. React with :wave: to vote.`)
-  .then(function(message) {
+  if (mention !== undefined && message.member.voice.channel.id === mention.voice.channel.id) {
 
-    const wave = client.emojis.find(emoji => emoji.name === 'wave');
-    console.log(wave);
-    message.react(wave.id);
-  }).catch(() => { console.log('here'); });
+    if (!hasRole(mention, 'Degenerate')) {
+
+      message.reply('This user cannot be kicked.');
+      return;
+    }
+
+    const voteCount = 2;//Math.floor(message.member.voice.channel.members.array().length * 0.5) + 1;
+    message.channel.send(`<@${message.author.id}> initiated a vote to kick <@${mention.user.id}>. React with :wave: to vote (${voteCount} needed).`)
+    .then(function(message) {
+
+      message.react(globals.emojis.wave);
+      message.awaitReactions(reactionFilter, {time: globals.reactionTimeout, errors: ['time']})
+      .then(function(collected) {
+
+        console.log('here');
+        message.channel.send(`The vote to kick has succeeded! ${getRandomFarewell()} ${mention.displayName}!`);
+        // mention.kick().then((member) => {
+        //
+        //   message.channel.send(`The vote to kick has succeeded! ${getRandomFarewell()} ${mention.displayName}! :wave:`);
+        // });
+      })
+      .catch(function(collected) {
+
+        message.channel.send(`The vote to kick <@${mention.user.id}> failed. Received ${collected.size} out of ${voteCount}.`);
+      });
+    });
+  }
 
   // mention.kick().then((member) => {
   //
@@ -41,6 +63,21 @@ client.on('message', function(message) {
 function hasRole(member, rolename) {
 
   return member.roles.cache.find(role => role.name === rolename) !== undefined;
+}
+
+function getRandomFarewell() {
+
+  return globals.farewells[randomNumber(globals.farewells.length)];
+}
+
+function reactionFilter(reaction, user) {
+
+  return globals.emojis.wave === reaction.emoji.name;
+}
+
+function randomNumber(max) {
+
+  return Math.floor(Math.random() * max);
 }
 
 client.login(token);
