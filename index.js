@@ -1,8 +1,8 @@
+require('dotenv').config();
+
 const discord = require('discord.js');
 const globals = require('./globals.js');
 const client = new discord.Client();
-
-const token = 'NzI2MjcyNDg0ODAyMDM1ODIz.Xvd35g.I77fRxs4ZgUgZ-po0VdmO7Y6MgM';
 
 client.on('ready', function() {
 
@@ -34,9 +34,11 @@ function handleVoteKick(message) {
   }
 
   const mention = message.mentions.members.first();
-  const voiceChannel = message.member.voice.channel;
+  const voiceChannel = message.member.voiceChannel;
 
-  if (mention && voiceChannel && voiceChannel.id === mention.voice.channel.id) {
+  console.log(voiceChannel);
+
+  if (mention && voiceChannel && voiceChannel.id === mention.voiceChannel.id) {
 
     if (isKickable(mention)) {
 
@@ -70,12 +72,12 @@ function handleVoteKick(message) {
 
 function canInitiateKick(member) {
 
-  return member.roles.cache.find(role => globals.votekickRoles.includes(role.name)) !== undefined;
+  return member.roles.find(role => globals.votekickRoles.includes(role.name)) !== undefined;
 }
 
 function isKickable(member) {
 
-  return member.roles.cache.find(role => !globals.unkickableRoles.includes(role.name)) !== undefined;
+  return member.roles.find(role => !globals.unkickableRoles.includes(role.name)) !== undefined;
 }
 
 function getRandomFarewell() {
@@ -93,4 +95,4 @@ function randomNumber(max) {
   return Math.floor(Math.random() * max);
 }
 
-client.login(token);
+client.login(process.env.TOKEN);
