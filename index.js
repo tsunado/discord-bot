@@ -11,25 +11,40 @@ client.on('ready', function() {
 
 client.on('message', function(message) {
 
-  if (message.author.id === client.user.id || !message.content.startsWith('!votekick'))
-    return;
+  if (message.content.startsWith('!votekick')) {
 
-  if (hasRole(message.member, 'Degenerate')) {
+    handleVoteKick(message);
+  }
+
+  // mention.kick().then((member) => {
+  //
+  //   message.channel.send(`:wave: Goodbye ${mention.displayName}!`);
+  // }).catch(() => {
+  //
+  //   message.channel.send('Unable to kick this user!');
+  // });
+});
+
+function handleVoteKick(message) {
+
+  if (!canInitiateKick(message.member)) {
 
     message.reply('You do not have sufficient permissions!');
     return;
   }
 
   const mention = message.mentions.members.first();
-  if (mention !== undefined && message.member.voice.channel.id === mention.voice.channel.id) {
+  const voiceChannel = message.member.voice.channel;
 
-    if (!hasRole(mention, 'Degenerate')) {
+  if (mention && voiceChannel && voiceChannel.id === mention.voice.channel.id) {
+
+    if (isKickable(mention)) {
 
       message.reply('This user cannot be kicked.');
       return;
     }
 
-    const voteCount = 2;//Math.floor(message.member.voice.channel.members.array().length * 0.5) + 1;
+    const voteCount = 2; //Math.floor(message.member.voice.channel.members.array().length * 0.5) + 1;
     message.channel.send(`<@${message.author.id}> initiated a vote to kick <@${mention.user.id}>. React with :wave: to vote (${voteCount} needed).`)
     .then(function(message) {
 
@@ -37,7 +52,6 @@ client.on('message', function(message) {
       message.awaitReactions(reactionFilter, {time: globals.reactionTimeout, errors: ['time']})
       .then(function(collected) {
 
-        console.log('here');
         message.channel.send(`The vote to kick has succeeded! ${getRandomFarewell()} ${mention.displayName}!`);
         // mention.kick().then((member) => {
         //
@@ -50,19 +64,18 @@ client.on('message', function(message) {
       });
     });
   }
+  else
+    message.reply('You must be in the same voice channel as this user.');
+}
 
-  // mention.kick().then((member) => {
-  //
-  //   message.channel.send(`:wave: Goodbye ${mention.displayName}!`);
-  // }).catch(() => {
-  //
-  //   message.channel.send('Unable to kick this user!');
-  // });
-});
+function canInitiateKick(member) {
 
-function hasRole(member, rolename) {
+  return member.roles.cache.find(role => globals.votekickRoles.includes(role.name)) !== undefined;
+}
 
-  return member.roles.cache.find(role => role.name === rolename) !== undefined;
+function isKickable(member) {
+
+  return member.roles.cache.find(role => !globals.unkickableRoles.includes(role.name)) !== undefined;
 }
 
 function getRandomFarewell() {
