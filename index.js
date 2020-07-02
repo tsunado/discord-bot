@@ -14,15 +14,14 @@ client.on('message', function(message) {
   if (message.content.startsWith('!votekick')) {
 
     handleVoteKick(message);
+    return;
   }
 
-  // mention.kick().then((member) => {
-  //
-  //   message.channel.send(`:wave: Goodbye ${mention.displayName}!`);
-  // }).catch(() => {
-  //
-  //   message.channel.send('Unable to kick this user!');
-  // });
+  if (message.content.startsWith('!mystream')) {
+
+    handleStream(message);
+    return;
+  }
 });
 
 function handleVoteKick(message) {
@@ -36,29 +35,32 @@ function handleVoteKick(message) {
   const mention = message.mentions.members.first();
   const voiceChannel = message.member.voiceChannel;
 
-  console.log(voiceChannel);
+  if (mention && voiceChannel && mention.voiceChannel && voiceChannel.id === mention.voiceChannel.id) {
 
-  if (mention && voiceChannel && voiceChannel.id === mention.voiceChannel.id) {
-
-    if (isKickable(mention)) {
+    if (isNotKickable(mention)) {
 
       message.reply('This user cannot be kicked.');
       return;
     }
 
-    const voteCount = 2; //Math.floor(message.member.voice.channel.members.array().length * 0.5) + 1;
+    const voteCount = Math.ceil(message.member.voice.channel.members.array().length * 0.5);
     message.channel.send(`<@${message.author.id}> initiated a vote to kick <@${mention.user.id}>. React with :wave: to vote (${voteCount} needed).`)
     .then(function(message) {
 
+      const filter = (reaction, user) => {
+
+        return globals.emojis.wave === reaction.emoji.name && user.id !== message.author.id;
+      }
+
       message.react(globals.emojis.wave);
-      message.awaitReactions(reactionFilter, {time: globals.reactionTimeout, errors: ['time']})
+      message.awaitReactions(filter, {max: voteCount, time: globals.reactionTimeout, errors: ['time']})
       .then(function(collected) {
 
-        message.channel.send(`The vote to kick has succeeded! ${getRandomFarewell()} ${mention.displayName}!`);
-        // mention.kick().then((member) => {
-        //
-        //   message.channel.send(`The vote to kick has succeeded! ${getRandomFarewell()} ${mention.displayName}! :wave:`);
-        // });
+        const reaction = collected.first();
+        mention.kick().then((member) => {
+
+          message.channel.send(`The vote to kick has succeeded! ${getRandomFarewell()} ${mention.displayName}! :wave:`);
+        });
       })
       .catch(function(collected) {
 
@@ -70,24 +72,24 @@ function handleVoteKick(message) {
     message.reply('You must be in the same voice channel as this user.');
 }
 
-function canInitiateKick(member) {
+function handleStream(member) {
 
-  return member.roles.find(role => globals.votekickRoles.includes(role.name)) !== undefined;
+  console.log('Implement this.');
 }
 
-function isKickable(member) {
+function canInitiateKick(member) {
 
-  return member.roles.find(role => !globals.unkickableRoles.includes(role.name)) !== undefined;
+  return member.roles.find(role => globals.votekickRoles.includes(role.name)) !== null;
+}
+
+function isNotKickable(member) {
+
+  return member.roles.find(role => globals.unkickableRoles.includes(role.name)) !== null;
 }
 
 function getRandomFarewell() {
 
   return globals.farewells[randomNumber(globals.farewells.length)];
-}
-
-function reactionFilter(reaction, user) {
-
-  return globals.emojis.wave === reaction.emoji.name;
 }
 
 function randomNumber(max) {
